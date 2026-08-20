@@ -1,87 +1,67 @@
 <!doctype html>
 <html lang="it">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#f2eadf" />
-  <title>Atlante Matematico — una mappa della conoscenza</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,500;1,6..72,500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#080b0a">
+  <title>Math Map // knowledge graph</title>
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <header class="topbar">
-    <a class="brand" href="#" aria-label="Atlante Matematico, torna all'inizio">
-      <span class="brand-mark">∑</span>
-      <span>Atlante<br>Matematico</span>
-    </a>
-    <nav aria-label="Navigazione principale">
-      <button class="nav-link active" data-view="map">Mappa</button>
-      <button class="nav-link" data-view="timeline">Cronologia</button>
-      <button class="nav-link" data-view="glossary">Glossario</button>
-    </nav>
-    <button class="about-btn" id="aboutBtn">Cos’è questo atlante? <span>↗</span></button>
+  <header>
+    <a class="logo" href="#map" aria-label="Math Map"><span>λ</span> MATH_MAP</a>
+    <div class="status"><i></i><span id="nodeCounter">0 NODES</span><span id="edgeCounter">0 EDGES</span></div>
+    <button id="helpButton" class="icon-button" aria-label="Mostra comandi">?</button>
   </header>
 
-  <main>
-    <section class="hero">
-      <p class="eyebrow">UNA CARTOGRAFIA DEL PENSIERO</p>
-      <h1>La matematica,<br><em>tutta intera.</em></h1>
-      <p class="intro">Dai numeri naturali agli spazi di Hilbert, una mappa interattiva dei concetti, degli strumenti e delle connessioni che costituiscono il linguaggio dell’universo.</p>
-      <div class="hero-actions">
-        <a class="primary-btn" href="#explore">Esplora la mappa <span>↓</span></a>
-        <div class="stats"><strong id="conceptCount">58</strong><span>concetti<br>mappati</span></div>
-        <div class="stats"><strong>8</strong><span>grandi<br>domini</span></div>
+  <main id="map">
+    <aside class="sidebar" aria-label="Filtri">
+      <label class="search">
+        <span>&gt;_</span>
+        <input id="searchInput" type="search" placeholder="find concept" autocomplete="off" aria-label="Cerca concetto">
+        <kbd>⌘K</kbd>
+      </label>
+      <nav id="domainFilters" aria-label="Domini matematici"></nav>
+      <div class="sidebar-controls">
+        <button id="fitButton">[ FIT GRAPH ]</button>
+        <button id="resetButton">[ RESET ]</button>
       </div>
-      <div class="formula-cloud" aria-hidden="true">
-        <span class="formula f1">∫<sub>a</sub><sup>b</sup> f(x)dx</span>
-        <span class="formula f2">e<sup>iπ</sup> + 1 = 0</span>
-        <span class="formula f3">P(A|B)</span>
-        <span class="formula f4">∀ ε &gt; 0</span>
-        <span class="orbital o1"></span><span class="orbital o2"></span>
+    </aside>
+
+    <section class="graph-wrap" id="graphWrap" aria-label="Grafo interattivo della matematica">
+      <canvas id="edges" aria-hidden="true"></canvas>
+      <div id="graph" class="graph"></div>
+      <div class="coordinates" id="coordinates">X 0000 / Y 0000 / Z 1.00</div>
+      <div class="zoom">
+        <button id="zoomIn" aria-label="Aumenta zoom">+</button>
+        <button id="zoomOut" aria-label="Riduci zoom">−</button>
       </div>
+      <div class="hint">DRAG SPACE · SCROLL ZOOM · CLICK NODE</div>
     </section>
 
-    <section class="explorer" id="explore">
-      <div class="section-heading">
-        <div><p class="eyebrow">ESPLORA PER DOMINIO</p><h2>La mappa della conoscenza</h2></div>
-        <p>Seleziona un dominio, segui le connessioni.<br>Ogni idea ne contiene un’altra.</p>
+    <section id="infoPanel" class="info-panel" aria-live="polite" hidden>
+      <div class="panel-bar" id="panelHandle">
+        <span id="panelCode">NODE_000</span>
+        <button id="closePanel" aria-label="Chiudi">×</button>
       </div>
-      <div class="toolbar">
-        <label class="search"><span>⌕</span><input id="searchInput" type="search" placeholder="Cerca un concetto…" autocomplete="off"><kbd>⌘ K</kbd></label>
-        <div class="view-switch" aria-label="Modalità visualizzazione">
-          <button class="active" data-layout="map" aria-label="Vista mappa">⌘</button>
-          <button data-layout="list" aria-label="Vista elenco">☷</button>
-        </div>
+      <div class="panel-content">
+        <p class="panel-domain" id="panelDomain"></p>
+        <h1 id="panelTitle"></h1>
+        <div class="equation" id="panelEquation"></div>
+        <p id="panelDescription"></p>
+        <dl id="panelMeta"></dl>
+        <div class="relations"><span>LINKED_NODES</span><div id="panelRelations"></div></div>
       </div>
-
-      <div class="domain-tabs" id="domainTabs"></div>
-      <div class="map-shell" id="mapShell">
-        <div class="map-meta"><span id="mapCaption">PANORAMICA · TUTTI I DOMINI</span><span>trascina per esplorare</span></div>
-        <div class="knowledge-map" id="knowledgeMap"></div>
-        <div class="zoom-controls"><button id="zoomIn">+</button><button id="zoomOut">−</button><button id="resetZoom">⌖</button></div>
-        <div class="legend"><span><i class="dot filled"></i> Dominio</span><span><i class="dot"></i> Concetto</span><span><i class="line"></i> Connessione</span></div>
-      </div>
-    </section>
-
-    <section class="quote-section">
-      <p>“La matematica è l’alfabeto<br>con cui Dio ha scritto l’universo.”</p>
-      <span>— GALILEO GALILEI, 1623</span>
-      <div class="sun-mark">✺</div>
     </section>
   </main>
 
-  <footer><div class="brand footer-brand"><span class="brand-mark">∑</span><span>Atlante<br>Matematico</span></div><p>Un progetto aperto e in continua evoluzione.<br>Perché la conoscenza non ha confini.</p><span>MMXXVI · ITALIA</span></footer>
+  <div class="help" id="help" hidden>
+    <div><b>COMMANDS</b><button id="closeHelp">×</button></div>
+    <p><kbd>click</kbd> apri nodo · <kbd>drag</kbd> sposta mappa</p>
+    <p><kbd>wheel</kbd> zoom · <kbd>esc</kbd> chiudi pannello</p>
+    <p><kbd>⌘ K</kbd> cerca · <kbd>click link</kbd> salta al nodo</p>
+  </div>
 
-  <dialog id="detailDialog">
-    <button class="dialog-close" aria-label="Chiudi">×</button>
-    <p class="eyebrow" id="dialogDomain"></p>
-    <div class="dialog-symbol" id="dialogSymbol"></div>
-    <h3 id="dialogTitle"></h3><p id="dialogDescription"></p>
-    <div class="dialog-links"><strong>CONNESSIONI</strong><div id="dialogConnections"></div></div>
-  </dialog>
-  <dialog id="aboutDialog"><button class="dialog-close" aria-label="Chiudi">×</button><p class="eyebrow">IL PROGETTO</p><h3>Una bussola nell’infinito</h3><p>Atlante Matematico rende visibile la trama delle idee: non un’enciclopedia esaustiva, ma una porta d’ingresso ai grandi territori della matematica e alle relazioni che li uniscono.</p></dialog>
   <script src="script.js"></script>
 </body>
 </html>
