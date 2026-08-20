@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#080b0a">
+  <title>Math Map // knowledge graph</title>
+  <style>
+:root {
+  --bg: #080b0a;
+  --panel: #0d1210;
+  --panel-2: #111815;
+  --line: #23342d;
+  --muted: #718078;
+  --text: #d8e2dd;
+  --green: #65ff9a;
+  --amber: #ffca68;
+  --cyan: #69dce7;
+  --sidebar: 230px;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; }
+button, input { font: inherit; }
+button { color: inherit; }
+header { height: 48px; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; padding: 0 16px; background: rgba(8,11,10,.94); position: relative; z-index: 20; }
+.logo { color: var(--text); text-decoration: none; font-size: 12px; font-weight: 700; letter-spacing: .12em; }
+.logo span { color: var(--green); font-size: 18px; vertical-align: -2px; }
+.status { display: flex; gap: 18px; align-items: center; color: var(--muted); font-size: 9px; letter-spacing: .1em; }
+.status i { width: 6px; height: 6px; border-radius: 50%; background: var(--green); box-shadow: 0 0 12px var(--green); }
+.icon-button { border: 1px solid var(--line); background: none; width: 26px; height: 26px; cursor: pointer; }
+main { height: calc(100% - 48px); display: grid; grid-template-columns: var(--sidebar) 1fr; }
+.sidebar { border-right: 1px solid var(--line); background: var(--panel); z-index: 10; display: flex; flex-direction: column; min-height: 0; }
+.search { margin: 14px; height: 38px; border: 1px solid var(--line); display: flex; align-items: center; gap: 8px; padding: 0 9px; color: var(--green); }
+.search:focus-within { border-color: var(--green); }
+.search input { color: var(--text); background: none; border: 0; outline: 0; min-width: 0; width: 100%; font-size: 11px; }
+kbd { color: var(--muted); border: 1px solid var(--line); padding: 2px 4px; font-size: 8px; }
+#domainFilters { overflow: auto; padding-bottom: 10px; }
+.filter { width: 100%; height: 40px; padding: 0 15px; border: 0; border-left: 2px solid transparent; background: none; display: flex; align-items: center; justify-content: space-between; color: var(--muted); font-size: 9px; letter-spacing: .08em; cursor: pointer; text-align: left; }
+.filter:hover { color: var(--text); background: var(--panel-2); }
+.filter.active { color: var(--green); border-left-color: var(--green); background: rgba(101,255,154,.04); }
+.filter small { color: #46534d; }
+.sidebar-controls { margin-top: auto; border-top: 1px solid var(--line); display: grid; grid-template-columns: 1fr 1fr; }
+.sidebar-controls button { border: 0; border-right: 1px solid var(--line); background: none; height: 42px; color: var(--muted); font-size: 8px; cursor: pointer; }
+.sidebar-controls button:hover { color: var(--green); }
+.graph-wrap { position: relative; overflow: hidden; cursor: grab; background-image: linear-gradient(rgba(101,255,154,.025) 1px, transparent 1px), linear-gradient(90deg, rgba(101,255,154,.025) 1px, transparent 1px); background-size: 32px 32px; }
+.graph-wrap.dragging { cursor: grabbing; }
+#edges, .graph { position: absolute; inset: 0; width: 100%; height: 100%; transform-origin: 0 0; }
+#edges { pointer-events: none; }
+.node { position: absolute; width: 104px; min-height: 46px; transform: translate(-50%, -50%); border: 1px solid var(--line); background: rgba(13,18,16,.95); padding: 7px; cursor: pointer; text-align: left; transition: border-color .15s, box-shadow .15s, opacity .15s; }
+.node::before { content: ""; width: 4px; height: 4px; background: var(--domain-color); position: absolute; left: -3px; top: -3px; box-shadow: 0 0 8px var(--domain-color); }
+.node:hover, .node.active { border-color: var(--domain-color); box-shadow: 0 0 20px color-mix(in srgb, var(--domain-color) 15%, transparent); z-index: 3; }
+.node.dim { opacity: .09; pointer-events: none; }
+.node.match { border-color: var(--amber); box-shadow: 0 0 16px rgba(255,202,104,.2); }
+.node .node-code { display: block; color: var(--muted); font-size: 6px; letter-spacing: .08em; }
+.node strong { display: block; font-size: 9px; margin: 5px 0 3px; font-weight: 500; }
+.node .mini-eq { display: block; color: var(--domain-color); font-family: Georgia, serif; font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.coordinates, .hint { position: absolute; color: #425149; font-size: 8px; letter-spacing: .1em; pointer-events: none; }
+.coordinates { left: 14px; bottom: 13px; }
+.hint { right: 14px; bottom: 13px; }
+.zoom { position: absolute; top: 14px; right: 14px; display: flex; border: 1px solid var(--line); }
+.zoom button { width: 30px; height: 28px; border: 0; border-right: 1px solid var(--line); background: var(--panel); cursor: pointer; }
+.zoom button:hover { color: var(--green); }
+.info-panel { position: fixed; z-index: 30; width: 350px; max-height: min(590px, calc(100vh - 80px)); right: 24px; top: 72px; background: rgba(13,18,16,.97); border: 1px solid #34483f; box-shadow: 0 20px 60px rgba(0,0,0,.5); overflow: hidden; }
+.panel-bar { height: 34px; padding-left: 12px; background: var(--panel-2); border-bottom: 1px solid var(--line); color: var(--muted); font-size: 8px; display: flex; justify-content: space-between; align-items: center; cursor: move; user-select: none; }
+.panel-bar button { height: 33px; width: 32px; border: 0; border-left: 1px solid var(--line); background: none; cursor: pointer; }
+.panel-bar button:hover { color: var(--green); }
+.panel-content { padding: 20px; overflow-y: auto; max-height: calc(min(590px, 100vh - 80px) - 34px); }
+.panel-domain { color: var(--green); font-size: 8px; letter-spacing: .13em; text-transform: uppercase; }
+.info-panel h1 { font-family: system-ui, sans-serif; font-size: 25px; letter-spacing: -.04em; margin: 9px 0 16px; }
+.equation { border: 1px solid var(--line); border-left: 2px solid var(--green); background: #090d0b; padding: 15px; color: var(--amber); font: 17px Georgia, serif; overflow-x: auto; }
+#panelDescription { font: 12px/1.7 system-ui, sans-serif; color: #aebbb4; }
+dl { display: grid; grid-template-columns: 76px 1fr; margin: 18px 0; font-size: 8px; border-top: 1px solid var(--line); }
+dt, dd { margin: 0; padding: 8px 0; border-bottom: 1px solid var(--line); }
+dt { color: var(--muted); } dd { color: var(--cyan); }
+.relations > span { color: var(--muted); font-size: 7px; letter-spacing: .12em; }
+#panelRelations { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; }
+.relation { background: none; border: 1px solid var(--line); padding: 6px 8px; color: #a5b2ac; font-size: 8px; cursor: pointer; }
+.relation:hover { border-color: var(--green); color: var(--green); }
+.help { position: fixed; inset: 60px 16px auto auto; z-index: 40; width: 330px; border: 1px solid var(--line); padding: 14px; background: var(--panel); font-size: 10px; box-shadow: 0 20px 50px #000; }
+.help > div { display: flex; justify-content: space-between; color: var(--green); }
+.help button { border: 0; background: none; cursor: pointer; }
+.help p { color: var(--muted); }
+@media (max-width: 700px) {
+  :root { --sidebar: 0px; }
+  .sidebar { position: fixed; z-index: 15; left: 0; right: 0; bottom: 0; height: 57px; border: 0; border-top: 1px solid var(--line); display: block; }
+  .search { position: fixed; top: 52px; left: 4px; width: calc(100% - 8px); margin: 0; background: var(--panel); }
+  #domainFilters { display: flex; overflow-x: auto; height: 56px; }
+  .filter { min-width: 105px; height: 56px; border-left: 0; border-bottom: 2px solid transparent; }
+  .filter.active { border-bottom-color: var(--green); }
+  .sidebar-controls { display: none; }
+  .graph-wrap { padding-top: 48px; }
+  .info-panel { left: 10px !important; right: 10px !important; top: auto !important; bottom: 68px; width: auto; max-height: 48vh; }
+  .panel-content { max-height: calc(48vh - 34px); }
+  .status span:last-child, .hint { display: none; }
+}
+  </style>
+</head>
+<body>
+  <header>
+    <a class="logo" href="#map" aria-label="Math Map"><span>λ</span> MATH_MAP</a>
+    <div class="status"><i></i><span id="nodeCounter">0 NODES</span><span id="edgeCounter">0 EDGES</span></div>
+    <button id="helpButton" class="icon-button" aria-label="Mostra comandi">?</button>
+  </header>
+
+  <main id="map">
+    <aside class="sidebar" aria-label="Filtri">
+      <label class="search">
+        <span>&gt;_</span>
+        <input id="searchInput" type="search" placeholder="find concept" autocomplete="off" aria-label="Cerca concetto">
+        <kbd>⌘K</kbd>
+      </label>
+      <nav id="domainFilters" aria-label="Domini matematici"></nav>
+      <div class="sidebar-controls">
+        <button id="fitButton">[ FIT GRAPH ]</button>
+        <button id="resetButton">[ RESET ]</button>
+      </div>
+    </aside>
+
+    <section class="graph-wrap" id="graphWrap" aria-label="Grafo interattivo della matematica">
+      <canvas id="edges" aria-hidden="true"></canvas>
+      <div id="graph" class="graph"></div>
+      <div class="coordinates" id="coordinates">X 0000 / Y 0000 / Z 1.00</div>
+      <div class="zoom">
+        <button id="zoomIn" aria-label="Aumenta zoom">+</button>
+        <button id="zoomOut" aria-label="Riduci zoom">−</button>
+      </div>
+      <div class="hint">DRAG SPACE · SCROLL ZOOM · CLICK NODE</div>
+    </section>
+
+    <section id="infoPanel" class="info-panel" aria-live="polite" hidden>
+      <div class="panel-bar" id="panelHandle">
+        <span id="panelCode">NODE_000</span>
+        <button id="closePanel" aria-label="Chiudi">×</button>
+      </div>
+      <div class="panel-content">
+        <p class="panel-domain" id="panelDomain"></p>
+        <h1 id="panelTitle"></h1>
+        <div class="equation" id="panelEquation"></div>
+        <p id="panelDescription"></p>
+        <dl id="panelMeta"></dl>
+        <div class="relations"><span>LINKED_NODES</span><div id="panelRelations"></div></div>
+      </div>
+    </section>
+  </main>
+
+  <div class="help" id="help" hidden>
+    <div><b>COMMANDS</b><button id="closeHelp">×</button></div>
+    <p><kbd>click</kbd> apri nodo · <kbd>drag</kbd> sposta mappa</p>
+    <p><kbd>wheel</kbd> zoom · <kbd>esc</kbd> chiudi pannello</p>
+    <p><kbd>⌘ K</kbd> cerca · <kbd>click link</kbd> salta al nodo</p>
+  </div>
+
+  <script>
+const D = [
+  { id: "found", name: "Fondamenti", color: "#65ff9a", nodes: [
+    ["logic", "Logica formale", "Γ ⊢ φ", "Studia inferenze valide attraverso linguaggi simbolici, sintassi e semantica.", "Antichità → oggi", "Deduzione"],
+    ["sets", "Teoria degli insiemi", "A ⊆ B ⇔ ∀x(x∈A ⇒ x∈B)", "Fornisce un linguaggio fondazionale per oggetti, collezioni, relazioni e funzioni.", "Cantor, Zermelo", "Fondazione"],
+    ["proof", "Teoria della dimostrazione", "Con(T) ⇏ T ⊢ Con(T)", "Analizza le dimostrazioni come oggetti matematici e i limiti dei sistemi formali.", "Hilbert, Gentzen", "Metamatematica"],
+    ["models", "Teoria dei modelli", "𝓜 ⊨ φ", "Studia il rapporto tra formule formali e strutture nelle quali risultano vere.", "Tarski", "Semantica"],
+    ["category", "Teoria delle categorie", "F : 𝒞 → 𝒟", "Descrive strutture tramite oggetti, morfismi e trasformazioni naturali.", "Eilenberg–Mac Lane", "Strutture"],
+    ["type", "Teoria dei tipi", "x : A ⊢ f(x) : B", "Alternativa fondazionale che associa a ogni termine un tipo e collega logica e programmi.", "Russell → HoTT", "Fondazione"],
+    ["computability", "Computabilità", "φₑ(x) ↓", "Classifica i problemi risolvibili da algoritmi e quelli indecidibili.", "Turing, Church", "Algoritmi"],
+    ["complexity", "Complessità", "P ?= NP", "Misura le risorse temporali e spaziali necessarie a risolvere problemi computazionali.", "XX secolo", "Calcolo"],
+    ["hott", "Homotopy Type Theory", "(A = B) ≃ Equiv(A,B)", "Interpreta uguaglianze come cammini e unisce tipi, omotopia e fondamenti univalenti.", "Voevodsky", "Frontiera"]
+  ]},
+  { id: "number", name: "Numeri", color: "#ffca68", nodes: [
+    ["natural", "Numeri naturali", "ℕ = {0,1,2,…}", "Struttura discreta del contare, descritta dagli assiomi di Peano.", "Antichità", "Aritmetica"],
+    ["integer", "Numeri interi", "ℤ = {…,−1,0,1,…}", "Estendono i naturali rendendo sempre possibile la sottrazione.", "Antichità", "Aritmetica"],
+    ["rational", "Numeri razionali", "ℚ = {p/q : q ≠ 0}", "Rapporti di interi; formano un campo ordinato denso ma non completo.", "Antichità", "Aritmetica"],
+    ["real", "Numeri reali", "ℝ = completion(ℚ)", "Completano la retta numerica: ogni successione di Cauchy converge.", "Dedekind, Cantor", "Analisi"],
+    ["complex", "Numeri complessi", "z = a + bi,  i² = −1", "Campo algebricamente chiuso che codifica rotazioni, onde e radici polinomiali.", "XVI secolo", "Algebra"],
+    ["prime", "Numeri primi", "p | ab ⇒ p | a ∨ p | b", "Atomi moltiplicativi degli interi, centrali in aritmetica e crittografia.", "Euclide", "Teoria dei numeri"],
+    ["congruence", "Aritmetica modulare", "a ≡ b (mod n)", "Studia resti e periodicità; trasforma ℤ in anelli quoziente finiti.", "Gauss", "Teoria dei numeri"],
+    ["diophantine", "Equazioni diofantee", "xⁿ + yⁿ = zⁿ", "Equazioni polinomiali delle quali si cercano soluzioni intere o razionali.", "Diofanto → oggi", "Teoria dei numeri"],
+    ["analyticnt", "Teoria analitica dei numeri", "ζ(s)=Σ n<sup>−s</sup>", "Usa analisi reale e complessa per studiare la distribuzione dei primi.", "Riemann", "Teoria dei numeri"]
+  ]},
+  { id: "algebra", name: "Algebra", color: "#f783ac", nodes: [
+    ["equation", "Equazioni", "f(x) = 0", "Formalizzano l'uguaglianza tra espressioni e la ricerca dei valori che la soddisfano.", "Antichità", "Algebra elementare"],
+    ["polynomial", "Polinomi", "P(x)=Σ aₖxᵏ", "Somme finite di monomi, fondamentali per approssimazione e geometria algebrica.", "Antichità", "Algebra"],
+    ["linear", "Algebra lineare", "A𝐱 = 𝐛", "Studia spazi vettoriali, trasformazioni lineari, matrici e autovalori.", "XIX secolo", "Strutture"],
+    ["group", "Teoria dei gruppi", "(G,·),  a·a<sup>−1</sup>=e", "Cattura il concetto di simmetria mediante un'operazione associativa e invertibile.", "Galois, Noether", "Algebra astratta"],
+    ["ring", "Teoria degli anelli", "(R,+,·)", "Generalizza l'aritmetica combinando un gruppo additivo e una moltiplicazione.", "XIX secolo", "Algebra astratta"],
+    ["field", "Teoria dei campi", "𝔽,  a ≠ 0 ⇒ a<sup>−1</sup>∈𝔽", "Studia sistemi numerici nei quali sono possibili le quattro operazioni.", "XIX secolo", "Algebra astratta"],
+    ["galois", "Teoria di Galois", "Gal(K/F) = Aut(K/F)", "Collega radici di polinomi e gruppi di simmetria delle estensioni di campo.", "Évariste Galois", "Algebra"],
+    ["representation", "Rappresentazioni", "ρ : G → GL(V)", "Traduce strutture astratte in trasformazioni lineari calcolabili.", "Frobenius", "Algebra"],
+    ["commutative", "Algebra commutativa", "Spec(R)", "Studia anelli commutativi e ideali; è il linguaggio locale della geometria algebrica.", "Noether, Grothendieck", "Algebra"]
+  ]},
+  { id: "geometry", name: "Geometria", color: "#69dce7", nodes: [
+    ["euclid", "Geometria euclidea", "a² + b² = c²", "Studia figure e distanze nello spazio piatto a partire da assiomi.", "Euclide", "Geometria"],
+    ["analyticgeo", "Geometria analitica", "x² + y² = r²", "Rappresenta forme tramite coordinate ed equazioni, unendo algebra e geometria.", "Cartesio, Fermat", "Geometria"],
+    ["projective", "Geometria proiettiva", "[x:y:z] ∈ ℙ²", "Studia proprietà invarianti per proiezione e tratta i punti all'infinito.", "XVII–XIX secolo", "Geometria"],
+    ["differential", "Geometria differenziale", "ds² = gᵢⱼ dxⁱdxʲ", "Usa il calcolo per studiare curve, superfici e varietà dotate di metrica.", "Gauss, Riemann", "Geometria"],
+    ["topology", "Topologia", "X ≃ Y", "Studia continuità e proprietà preservate da deformazioni senza tagli o incollaggi.", "Euler → Poincaré", "Spazi"],
+    ["manifold", "Varietà", "M locally ≅ ℝⁿ", "Spazi localmente euclidei che modellano configurazioni, spazio-tempo e dati.", "Riemann", "Geometria"],
+    ["algebraicgeo", "Geometria algebrica", "V(I) = {x : f(x)=0 ∀f∈I}", "Studia luoghi di zeri polinomiali con strumenti algebrici e topologici.", "Descartes → Grothendieck", "Geometria"],
+    ["fractal", "Geometria frattale", "dim<sub>H</sub>(X) = d", "Descrive strutture autosimili con dimensione spesso non intera.", "Mandelbrot", "Geometria"],
+    ["knot", "Teoria dei nodi", "V<sub>K</sub>(t)", "Classifica immersioni di circonferenze nello spazio tramite invarianti topologici.", "XIX secolo → oggi", "Topologia"]
+  ]},
+  { id: "analysis", name: "Analisi", color: "#a78bfa", nodes: [
+    ["limit", "Limiti", "lim<sub>x→a</sub> f(x)=L", "Formalizzano l'avvicinamento e fondano continuità, derivazione e integrazione.", "Cauchy, Weierstrass", "Analisi"],
+    ["derivative", "Calcolo differenziale", "f′(x)=lim<sub>h→0</sub> [f(x+h)−f(x)]/h", "Misura variazioni istantanee, pendenze e sensibilità locale.", "Newton, Leibniz", "Calcolo"],
+    ["integral", "Calcolo integrale", "∫<sub>a</sub><sup>b</sup> f(x) dx", "Aggrega quantità infinitesime e misura aree, masse e probabilità.", "Newton, Leibniz", "Calcolo"],
+    ["series", "Serie infinite", "Σ<sub>n=0</sub><sup>∞</sup> aₙ", "Rappresentano quantità come somme infinite e richiedono criteri di convergenza.", "XVII secolo → oggi", "Analisi"],
+    ["ode", "Equazioni differenziali ordinarie", "ẋ(t)=f(t,x)", "Modellano l'evoluzione continua di sistemi con un numero finito di variabili.", "XVII secolo → oggi", "Dinamica"],
+    ["pde", "Equazioni alle derivate parziali", "∂ₜu = Δu", "Descrivono campi distribuiti: onde, calore, fluidi e fenomeni quantistici.", "Euler, Fourier", "Analisi"],
+    ["complexanalysis", "Analisi complessa", "∮<sub>γ</sub> f(z) dz = 2πi Σ Res(f)", "Studia funzioni olomorfe, notevolmente rigide, e i loro integrali nel piano complesso.", "Cauchy, Riemann", "Analisi"],
+    ["measure", "Teoria della misura", "μ(⋃Aₙ)=Σμ(Aₙ)", "Generalizza lunghezza, area e volume e fonda l'integrale di Lebesgue.", "Lebesgue", "Analisi"],
+    ["functional", "Analisi funzionale", "T : X → Y,  ‖T‖ < ∞", "Studia spazi di funzioni infinito-dimensionali e operatori continui.", "Hilbert, Banach", "Analisi"]
+  ]},
+  { id: "probability", name: "Probabilità", color: "#ff8a65", nodes: [
+    ["combinatorics", "Combinatoria", "C(n,k)=n!/[k!(n−k)!]", "Conta configurazioni discrete e studia strutture finite, grafi e disegni.", "Antichità → oggi", "Discreta"],
+    ["probability", "Teoria della probabilità", "P(A|B)=P(A∩B)/P(B)", "Assegna misure coerenti agli eventi e formalizza l'incertezza.", "Pascal → Kolmogorov", "Probabilità"],
+    ["randomvar", "Variabili casuali", "E[X]=∫ X dP", "Trasformano esiti aleatori in valori numerici analizzabili.", "XX secolo", "Probabilità"],
+    ["distributions", "Distribuzioni", "X ∼ 𝒩(μ,σ²)", "Descrivono come la probabilità si ripartisce sui valori possibili.", "Gauss → oggi", "Probabilità"],
+    ["statistics", "Statistica", "x̄ = (1/n)Σxᵢ", "Estrae informazione dai dati quantificando variabilità ed errore.", "XVIII secolo → oggi", "Dati"],
+    ["bayes", "Inferenza bayesiana", "P(θ|x) ∝ P(x|θ)P(θ)", "Aggiorna credenze sui parametri combinando dati osservati e conoscenza precedente.", "Bayes, Laplace", "Inferenza"],
+    ["stochastic", "Processi stocastici", "{Xₜ : t∈T}", "Modellano sistemi aleatori che evolvono nel tempo o nello spazio.", "XX secolo", "Probabilità"],
+    ["markov", "Catene di Markov", "P(Xₙ₊₁|Xₙ,…)=P(Xₙ₊₁|Xₙ)", "Processi senza memoria usati in dinamica, simulazione e algoritmi.", "Markov", "Probabilità"],
+    ["information", "Teoria dell'informazione", "H(X)=−Σ p(x)log₂p(x)", "Quantifica informazione, sorpresa e limiti della compressione e comunicazione.", "Claude Shannon", "Informazione"]
+  ]},
+  { id: "applied", name: "Applicata", color: "#ffe066", nodes: [
+    ["optimization", "Ottimizzazione", "x* = arg min<sub>x∈X</sub> f(x)", "Cerca decisioni che minimizzano costi o massimizzano prestazioni sotto vincoli.", "Antichità → oggi", "Applicata"],
+    ["numerical", "Analisi numerica", "|x−x̃| ≤ ε", "Progetta algoritmi stabili per approssimare soluzioni matematiche.", "Newton → oggi", "Calcolo"],
+    ["dynamics", "Sistemi dinamici", "xₙ₊₁ = F(xₙ)", "Studiano orbite, equilibri, biforcazioni e comportamento a lungo termine.", "Poincaré → oggi", "Dinamica"],
+    ["control", "Teoria del controllo", "ẋ=Ax+Bu", "Progetta ingressi che guidano sistemi dinamici verso comportamenti desiderati.", "XX secolo", "Ingegneria"],
+    ["operations", "Ricerca operativa", "min cᵀx  s.t. Ax≤b", "Ottimizza allocazioni, reti, code e decisioni organizzative.", "XX secolo", "Decisioni"],
+    ["game", "Teoria dei giochi", "uᵢ(sᵢ*,s₋ᵢ*) ≥ uᵢ(sᵢ,s₋ᵢ*)", "Studia decisioni strategiche di agenti con interessi interdipendenti.", "von Neumann, Nash", "Decisioni"],
+    ["mathphysics", "Fisica matematica", "iℏ ∂ₜ|ψ⟩ = Ĥ|ψ⟩", "Formula teorie fisiche con strutture rigorose, dalla meccanica alla relatività.", "Newton → oggi", "Fisica"],
+    ["fluid", "Fluidodinamica", "ρ(∂ₜ𝐮+𝐮·∇𝐮)=−∇p+μΔ𝐮", "Descrive il moto di liquidi e gas tramite conservazione e PDE non lineari.", "Euler, Navier–Stokes", "Fisica"],
+    ["finance", "Matematica finanziaria", "dSₜ=μSₜdt+σSₜdWₜ", "Applica processi stocastici, arbitraggio e ottimizzazione a prezzi e rischio.", "Bachelier → oggi", "Finanza"]
+  ]},
+  { id: "frontier", name: "Frontiere", color: "#74c0fc", nodes: [
+    ["graph", "Teoria dei grafi", "G=(V,E)", "Studia reti di vertici e archi: connessioni, flussi, percorsi e colorazioni.", "Euler → oggi", "Discreta"],
+    ["chaos", "Teoria del caos", "|δx(t)| ≈ e<sup>λt</sup>|δx(0)|", "Analizza dinamiche deterministiche con dipendenza sensibile dalle condizioni iniziali.", "Poincaré, Lorenz", "Dinamica"],
+    ["networks", "Reti complesse", "P(k) ∼ k<sup>−γ</sup>", "Studia struttura ed evoluzione di reti reali sociali, biologiche e tecnologiche.", "XXI secolo", "Interdisciplinare"],
+    ["crypto", "Crittografia", "c ≡ m<sup>e</sup> (mod n)", "Protegge informazione usando problemi aritmetici e strutture algebriche.", "Antichità → oggi", "Sicurezza"],
+    ["ml", "Machine learning", "θ* = arg min<sub>θ</sub> Σℓ(f<sub>θ</sub>(xᵢ),yᵢ)", "Costruisce modelli che apprendono regolarità dai dati tramite ottimizzazione.", "XX–XXI secolo", "Calcolo"],
+    ["quantuminfo", "Informazione quantistica", "|ψ⟩=α|0⟩+β|1⟩", "Unisce algebra lineare, probabilità e fisica quantistica per calcolo e comunicazione.", "XX–XXI secolo", "Quantistica"],
+    ["tda", "Topological data analysis", "Hₖ(X<sub>ε</sub>)", "Usa omologia persistente per rilevare forma e struttura multiscala nei dati.", "XXI secolo", "Dati"],
+    ["inverse", "Problemi inversi", "y=F(x)+η ⇒ x?", "Ricostruisce cause e parametri da osservazioni indirette, spesso mal poste.", "XX secolo → oggi", "Applicata"],
+    ["open", "Problemi aperti", "ζ(s)=0 ⇒ Re(s)=1/2 ?", "Questioni irrisolte che delimitano la conoscenza: Riemann, P vs NP, Navier–Stokes e altre.", "Oggi", "Ricerca"]
+  ]}
+];
+
+const crossLinks = [
+  ["logic","proof"],["logic","models"],["sets","topology"],["sets","probability"],["category","algebraicgeo"],["category","hott"],["type","computability"],["computability","complexity"],["complexity","open"],
+  ["natural","integer"],["integer","rational"],["rational","real"],["real","complex"],["prime","congruence"],["congruence","crypto"],["diophantine","algebraicgeo"],["analyticnt","complexanalysis"],["analyticnt","open"],
+  ["equation","polynomial"],["polynomial","galois"],["linear","representation"],["linear","ml"],["group","galois"],["ring","commutative"],["field","galois"],["commutative","algebraicgeo"],
+  ["euclid","analyticgeo"],["analyticgeo","algebraicgeo"],["differential","manifold"],["differential","mathphysics"],["topology","manifold"],["topology","knot"],["topology","tda"],["fractal","chaos"],
+  ["limit","derivative"],["derivative","integral"],["integral","measure"],["series","complexanalysis"],["ode","dynamics"],["pde","fluid"],["measure","probability"],["functional","quantuminfo"],["functional","pde"],
+  ["combinatorics","graph"],["probability","randomvar"],["randomvar","distributions"],["distributions","statistics"],["statistics","bayes"],["stochastic","markov"],["stochastic","finance"],["information","quantuminfo"],["information","ml"],
+  ["optimization","ml"],["optimization","operations"],["numerical","inverse"],["dynamics","chaos"],["control","ode"],["game","probability"],["mathphysics","quantuminfo"],["fluid","open"],
+  ["graph","networks"],["networks","markov"],["crypto","prime"],["tda","networks"],["inverse","statistics"],["open","complexity"]
+];
+
+const nodes = [];
+D.forEach((domain, di) => domain.nodes.forEach((n, ni) => {
+  const angle = (di / D.length) * Math.PI * 2 - Math.PI / 2;
+  const local = (ni / domain.nodes.length) * Math.PI * 2;
+  const radius = 360;
+  nodes.push({ id:n[0], title:n[1], equation:n[2], description:n[3], era:n[4], kind:n[5], domain:domain.id, color:domain.color,
+    x: 900 + Math.cos(angle) * radius + Math.cos(local) * 150,
+    y: 560 + Math.sin(angle) * radius + Math.sin(local) * 120 });
+}));
+const byId = new Map(nodes.map(n => [n.id, n]));
+const links = [];
+D.forEach(domain => {
+  const ids = domain.nodes.map(n => n[0]);
+  for (let i=0; i<ids.length; i++) links.push([ids[i], ids[(i+1)%ids.length]]);
+});
+crossLinks.forEach(link => links.push(link));
+const adjacency = new Map(nodes.map(n => [n.id, new Set()]));
+links.forEach(([a,b]) => { adjacency.get(a)?.add(b); adjacency.get(b)?.add(a); });
+
+const wrap = document.getElementById("graphWrap");
+const graph = document.getElementById("graph");
+const canvas = document.getElementById("edges");
+const ctx = canvas.getContext("2d");
+let view = { x: 0, y: 0, scale: 1 }, selected = null, domainFilter = "all", dragging = false, dragOrigin;
+
+function renderNodes() {
+  graph.innerHTML = nodes.map((n, i) => `<button class="node" id="node-${n.id}" data-id="${n.id}" style="left:${n.x}px;top:${n.y}px;--domain-color:${n.color}"><span class="node-code">${String(i+1).padStart(3,"0")} / ${n.domain.toUpperCase()}</span><strong>${n.title}</strong><span class="mini-eq">${n.equation}</span></button>`).join("");
+  graph.querySelectorAll(".node").forEach(el => el.addEventListener("click", e => { e.stopPropagation(); focusNode(el.dataset.id, false); }));
+}
+function renderFilters() {
+  const nav = document.getElementById("domainFilters");
+  nav.innerHTML = `<button class="filter active" data-domain="all"><span>00 / ALL_SYSTEMS</span><small>${nodes.length}</small></button>` + D.map((d,i) => `<button class="filter" data-domain="${d.id}"><span>${String(i+1).padStart(2,"0")} / ${d.name.toUpperCase()}</span><small>${d.nodes.length}</small></button>`).join("");
+  nav.querySelectorAll(".filter").forEach(b => b.onclick = () => setDomain(b.dataset.domain));
+}
+function setDomain(id) {
+  domainFilter = id;
+  document.querySelectorAll(".filter").forEach(b => b.classList.toggle("active", b.dataset.domain === id));
+  nodes.forEach(n => document.getElementById(`node-${n.id}`).classList.toggle("dim", id !== "all" && n.domain !== id));
+  drawEdges();
+  if (id !== "all") fitNodes(nodes.filter(n => n.domain === id));
+}
+function applyView() {
+  graph.style.transform = `translate(${view.x}px,${view.y}px) scale(${view.scale})`;
+  drawEdges();
+  document.getElementById("coordinates").textContent = `X ${Math.round(-view.x).toString().padStart(4,"0")} / Y ${Math.round(-view.y).toString().padStart(4,"0")} / Z ${view.scale.toFixed(2)}`;
+}
+function resize() { const r=wrap.getBoundingClientRect(), d=devicePixelRatio||1; canvas.width=r.width*d; canvas.height=r.height*d; canvas.style.width=`${r.width}px`; canvas.style.height=`${r.height}px`; ctx.setTransform(d,0,0,d,0,0); drawEdges(); }
+function drawEdges() {
+  const r=wrap.getBoundingClientRect(); ctx.clearRect(0,0,r.width,r.height);
+  links.forEach(([a,b]) => { const A=byId.get(a), B=byId.get(b); if(!A||!B)return; const active = selected && (a===selected||b===selected); const dim = domainFilter!=="all" && A.domain!==domainFilter && B.domain!==domainFilter; ctx.beginPath(); ctx.moveTo(A.x*view.scale+view.x,A.y*view.scale+view.y); ctx.lineTo(B.x*view.scale+view.x,B.y*view.scale+view.y); ctx.strokeStyle=dim?"rgba(35,52,45,.08)":active?byId.get(selected).color:"rgba(75,105,91,.38)"; ctx.lineWidth=active?1.6:.7; ctx.stroke(); });
+}
+function fitNodes(group=nodes) {
+  const r=wrap.getBoundingClientRect(); const xs=group.map(n=>n.x), ys=group.map(n=>n.y); const minX=Math.min(...xs)-100,maxX=Math.max(...xs)+100,minY=Math.min(...ys)-80,maxY=Math.max(...ys)+80;
+  view.scale=Math.min(r.width/(maxX-minX),r.height/(maxY-minY),1.15); view.x=(r.width-(minX+maxX)*view.scale)/2; view.y=(r.height-(minY+maxY)*view.scale)/2; applyView();
+}
+function focusNode(id, center=true) {
+  const n=byId.get(id); if(!n)return; selected=id;
+  if(domainFilter!=="all" && domainFilter!==n.domain) setDomain(n.domain);
+  document.querySelectorAll(".node").forEach(el=>el.classList.toggle("active",el.dataset.id===id));
+  if(center){const r=wrap.getBoundingClientRect();view.x=r.width/2-n.x*view.scale;view.y=r.height/2-n.y*view.scale;applyView();}
+  const panel=document.getElementById("infoPanel"), index=nodes.indexOf(n)+1; panel.hidden=false;
+  document.getElementById("panelCode").textContent=`NODE_${String(index).padStart(3,"0")}`;
+  document.getElementById("panelDomain").textContent=`${D.find(d=>d.id===n.domain).name} / ${n.kind}`;
+  document.getElementById("panelTitle").textContent=n.title;
+  document.getElementById("panelEquation").innerHTML=n.equation;
+  document.getElementById("panelDescription").textContent=n.description;
+  document.getElementById("panelMeta").innerHTML=`<dt>PERIODO</dt><dd>${n.era}</dd><dt>CLASSE</dt><dd>${n.kind}</dd><dt>CONNESSIONI</dt><dd>${adjacency.get(id).size}</dd>`;
+  document.getElementById("panelRelations").innerHTML=[...adjacency.get(id)].map(x=>`<button class="relation" data-target="${x}">→ ${byId.get(x).title}</button>`).join("");
+  document.querySelectorAll(".relation").forEach(b=>b.onclick=()=>focusNode(b.dataset.target,true)); drawEdges();
+}
+function zoomAt(amount,cx,cy){const old=view.scale;view.scale=Math.max(.25,Math.min(2.2,view.scale*amount));view.x=cx-(cx-view.x)*(view.scale/old);view.y=cy-(cy-view.y)*(view.scale/old);applyView();}
+wrap.addEventListener("wheel",e=>{e.preventDefault();const r=wrap.getBoundingClientRect();zoomAt(e.deltaY<0?1.12:.89,e.clientX-r.left,e.clientY-r.top)},{passive:false});
+wrap.addEventListener("pointerdown",e=>{if(e.target.closest(".node"))return;dragging=true;wrap.classList.add("dragging");dragOrigin={px:e.clientX,py:e.clientY,x:view.x,y:view.y};wrap.setPointerCapture(e.pointerId)});
+wrap.addEventListener("pointermove",e=>{if(!dragging)return;view.x=dragOrigin.x+e.clientX-dragOrigin.px;view.y=dragOrigin.y+e.clientY-dragOrigin.py;applyView()});
+wrap.addEventListener("pointerup",()=>{dragging=false;wrap.classList.remove("dragging")});
+document.getElementById("zoomIn").onclick=()=>zoomAt(1.2,wrap.clientWidth/2,wrap.clientHeight/2);
+document.getElementById("zoomOut").onclick=()=>zoomAt(.8,wrap.clientWidth/2,wrap.clientHeight/2);
+document.getElementById("fitButton").onclick=()=>fitNodes(domainFilter==="all"?nodes:nodes.filter(n=>n.domain===domainFilter));
+document.getElementById("resetButton").onclick=()=>{setDomain("all");selected=null;document.getElementById("infoPanel").hidden=true;fitNodes()};
+const search=document.getElementById("searchInput");
+search.oninput=()=>{const q=search.value.toLowerCase().trim();nodes.forEach(n=>{const el=document.getElementById(`node-${n.id}`);const hit=!q||(n.title+" "+n.description+" "+n.kind).toLowerCase().includes(q);el.classList.toggle("dim",!hit);el.classList.toggle("match",!!q&&hit)});drawEdges()};
+search.addEventListener("keydown",e=>{if(e.key==="Enter"){const q=search.value.toLowerCase();const hit=nodes.find(n=>(n.title+" "+n.description).toLowerCase().includes(q));if(hit)focusNode(hit.id,true)}});
+document.addEventListener("keydown",e=>{if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==="k"){e.preventDefault();search.focus()}if(e.key==="Escape")document.getElementById("infoPanel").hidden=true});
+document.getElementById("closePanel").onclick=()=>document.getElementById("infoPanel").hidden=true;
+const panel=document.getElementById("infoPanel"), handle=document.getElementById("panelHandle"); let moving=false,po;
+handle.addEventListener("pointerdown",e=>{if(e.target.closest("button"))return;moving=true;po={x:e.clientX-panel.offsetLeft,y:e.clientY-panel.offsetTop};handle.setPointerCapture(e.pointerId)});
+handle.addEventListener("pointermove",e=>{if(!moving||innerWidth<700)return;panel.style.left=`${Math.max(0,Math.min(innerWidth-panel.offsetWidth,e.clientX-po.x))}px`;panel.style.top=`${Math.max(49,Math.min(innerHeight-panel.offsetHeight,e.clientY-po.y))}px`;panel.style.right="auto"});
+handle.addEventListener("pointerup",()=>moving=false);
+document.getElementById("helpButton").onclick=()=>document.getElementById("help").hidden=false;document.getElementById("closeHelp").onclick=()=>document.getElementById("help").hidden=true;
+window.addEventListener("resize",()=>{resize();fitNodes(domainFilter==="all"?nodes:nodes.filter(n=>n.domain===domainFilter))});
+document.getElementById("nodeCounter").textContent=`${nodes.length} NODES`;document.getElementById("edgeCounter").textContent=`${links.length} EDGES`;
+renderFilters();renderNodes();resize();requestAnimationFrame(()=>fitNodes());
+  </script>
+</body>
+</html>
