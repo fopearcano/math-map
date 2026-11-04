@@ -5,7 +5,7 @@ Una mappa concettuale visuale e interattiva dei principali domini, concetti e st
 ## Avvio
 
 ```bash
-python3 -m http.server 8010
+python3 -m http.server 8099
 ```
 
 Apri `http://localhost:8010` nel browser.
